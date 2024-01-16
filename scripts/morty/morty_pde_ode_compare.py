@@ -195,14 +195,12 @@ class DiffEqComp:
 if __name__ == '__main__':
     no_space_ODE = True
     spatial_source_variation = False
+    gif = False
 
     # MSRE https://www.tandfonline.com/doi/epdf/10.1080/00295450.2021.1943122?needAccess=true
     z1 = 272
     z2 = (z1 / 0.33) * 0.67
-    savedir = './images'
-    if not os.path.isdir(savedir):
-        os.makedirs(savedir)
-    nodes = 10
+    nodes = 20
     
     # 25,233 cm3/s
     nu1 = 66666.66
@@ -212,26 +210,35 @@ if __name__ == '__main__':
     mu = {'test': [2.1065742176025568e-05 + loss_core, 2.1065742176025568e-05]}
     S = {'test': [24568909090.909092, 0]}
     initial_guess = [0, 0]
-    nz = 100
+    nz = 8
     
     dz = np.diff(np.linspace(0, z1+z2, nz))[0]
-    tf = 10 #324_000
+    tf = 1000 #324_000
 
     lmbda = 0.9
     dt = lmbda * dz / nu1
     Comp = DiffEqComp(mu, S, isotope, nu1, nu2, z1, z2, nodes, tf, dt, initial_guess, lmbda)
+    print(f'Spatial nodes: {nodes}')
+    ts = np.arange(0, tf+dt, dt)
+    print(f'Temporal nodes: {len(ts)}')
+    print(f'Net data: {nodes * len(ts)}')
 
 
     start = time()
+    zs, ts, concs = Comp.fd_PDE(False)
     if spatial_source_variation:
-        zs, ts, concs_vary = Comp.fd_PDE(True)
-    else:
-        zs, ts, concs = Comp.fd_PDE(False)
+        _, _, concs_vary = Comp.fd_PDE(True)
 
     if no_space_ODE:
         conc_no_space = Comp.ODE()
     end = time()
     print(f'Time taken: {round(end-start)} s')
+
+
+    # Plotting
+    savedir = './images'
+    if not os.path.isdir(savedir):
+        os.makedirs(savedir)
 
     plt.plot(zs, concs[0, :], label='Initial')
     if spatial_source_variation:
@@ -251,11 +258,14 @@ if __name__ == '__main__':
         plt.plot(zs, concs_vary[-1, :], label='Final (Spatial Source)', linestyle = '-.', color='g')
     if no_space_ODE:
         plt.hlines(conc_no_space[-1], zs[0], zs[-1], label='Final No Spatial Component', linestyle='--', color='g')
+    plt.yscale('log')
     plt.legend()
     plt.xlabel('Space [cm]')
     plt.ylabel('Conc [at/cc]')
     plt.savefig(f'{savedir}/PDE_ODE_space.png')
     plt.close()
+
+
     plt.plot(ts, concs[:, int(len(zs)/3)][:-1], label='Core Outlet')
     plt.plot(ts, concs[:, -1][:-1], label='Excore Outlet')
     if spatial_source_variation:
@@ -265,6 +275,7 @@ if __name__ == '__main__':
     if no_space_ODE:
         plt.plot(ts, conc_no_space, label='No Spatial Component')
     plt.legend()
+    plt.yscale('log')
     plt.xlabel('Time [s]')
     plt.ylabel('Conc [at/cc]')
     plt.savefig(f'{savedir}/PDE_ODE_time.png')
@@ -284,3 +295,25 @@ if __name__ == '__main__':
         mean_ns_conc = conc_no_space[-1]
         avg_pcnt_diff = np.abs(mean_conc - mean_ns_conc) / (2 * (mean_conc + mean_ns_conc)) * 100
         print(f'Percent difference average ODE: {avg_pcnt_diff}%')
+
+
+    # Gif
+    if gif:
+        print(f'Estimated time to gif completion: {round(0.03 * len(ts))} s')
+        start = time()
+        from matplotlib.animation import FuncAnimation
+        fig, ax = plt.subplots()
+        def update(frame):
+            ax.clear()
+            plt.xlabel('Space [cm]')
+            plt.vlines(z1, 0, np.max(concs), color='black')
+            plt.ylabel('Concentration [at/cc]')
+            plt.ylim((0, np.max(concs[:, :])))
+
+            ax.plot(zs, concs[frame, :], marker='.')
+            #ax.imshow(concs[frame, :], cmap='viridis')
+            ax.set_title(f'Time: {round(frame*dt, 4)} s')
+        animation = FuncAnimation(fig, update, frames=len(ts), interval=1)
+        animation.save(f'{savedir}/evolution.gif', writer='pillow')
+        plt.close()
+    print(f'Gif took {time() - start} s')
