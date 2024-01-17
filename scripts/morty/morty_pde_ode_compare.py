@@ -183,6 +183,16 @@ class DiffEqComp:
         return self.zs, self.ts, N_z_t
 
     def ODE(self):
+        """
+
+        Solves the ODE form of depletion (no neutronic updates)        
+
+        Returns
+        -------
+        conc : list of 1D vectors
+            Each item in the list is the spatial concentration vector
+
+        """
         conc = []
         for t in ts:
             current = (self.init_conc[0] * np.exp(-self.mu1 * t) + 
