@@ -195,22 +195,29 @@ class DiffEqComp:
 if __name__ == '__main__':
     no_space_ODE = True
     spatial_source_variation = False
-    gif = False
+    gif = True
 
-    # MSRE https://www.tandfonline.com/doi/epdf/10.1080/00295450.2021.1943122?needAccess=true
-    z1 = 272
+    # MSRE https://www.tandfonline.com/doi/epdf/10.1080/00295450.2021.1943122?needAccess=true [1]
+    # https://github.com/openmsr/msre/blob/master/core/docs/msrecore.pdf [2]
+    # https://link.springer.com/article/10.1007/s10967-022-08535-3 [3]
+    z1 = 200.66 # [2] #272 #[1]
     z2 = (z1 / 0.33) * 0.67
     nodes = 20
     
-    # 25,233 cm3/s
-    nu1 = 66666.66
-    nu2 = 66666.66
+    # 25,233 cm3/s # [1]
+    # 75,708 cm3/s # [2]
+    core_diameter = 140.335 #[2]
+    fuel_frac = 0.225 #[2]
+    xsarea = fuel_frac * (np.pi * (core_diameter/2)**2)
+    nu = 75708 / xsarea
+    nu1 = nu #66666.66 [3]
+    nu2 = nu #66666.66 [3]
     loss_core = 6e12 * 2666886.8E-24
     isotope = 'test'
     mu = {'test': [2.1065742176025568e-05 + loss_core, 2.1065742176025568e-05]}
     S = {'test': [24568909090.909092, 0]}
     initial_guess = [0, 0]
-    nz = 8
+    nz = 20
     
     dz = np.diff(np.linspace(0, z1+z2, nz))[0]
     tf = 1000 #324_000
@@ -311,9 +318,8 @@ if __name__ == '__main__':
             plt.ylim((0, np.max(concs[:, :])))
 
             ax.plot(zs, concs[frame, :], marker='.')
-            #ax.imshow(concs[frame, :], cmap='viridis')
             ax.set_title(f'Time: {round(frame*dt, 4)} s')
         animation = FuncAnimation(fig, update, frames=len(ts), interval=1)
         animation.save(f'{savedir}/evolution.gif', writer='pillow')
         plt.close()
-    print(f'Gif took {time() - start} s')
+        print(f'Gif took {time() - start} s')
