@@ -3,7 +3,53 @@ import matplotlib.pyplot as plt
 from time import time
 import os
 
-class DiffEqComp:
+class FormatAssist:
+    """ 
+    Mixin class
+
+    """
+    def _format_spatial(self, term1, term2, vector_form=False):
+        """
+        Distribute term 1 in < z1, and term 2 in > z1.
+        Returns a list of terms corresponding to each z. 
+        If term1 and term2 are vectors, use `vector_form=True`
+
+        Parameters
+        ----------
+        term1 : float
+            Term in the in-core region
+        term2 : float
+            Term in the ex-core region
+        vector_form : bool
+            Terms are given as spatial vectors rather than floats
+        
+        Returns
+        -------
+        return_list : 1D numpy array
+            Spatial distribution of values at each point
+
+        """
+        return_list = []
+        for zi, z in enumerate(self.zs):
+            if z < self.z1:
+                if not vector_form:
+                   return_list.append(term1)
+                else:
+                   return_list.append(term1[zi])
+            elif z > self.z1:
+                if not vector_form:
+                   return_list.append(term2)
+                else:
+                   return_list.append(term2[zi])
+            else:
+                if not vector_form:
+                   return_list.append(0.5 * (term1 + term2))
+                else:
+                   return_list.append(0.5 * (term1[zi] + term2[zi]))
+        return np.asarray(return_list)
+
+
+class DiffEqComp(FormatAssist):
     def __init__(self, mu, S, isotope, nu1, nu2, z1, z2, nodes, tf, dt, initial_guess, lmbda):
         """
 
