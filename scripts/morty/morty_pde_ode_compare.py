@@ -252,13 +252,14 @@ if __name__ == '__main__':
     no_space_ODE = True
     spatial_source_variation = False
     gif = True
+    tf = 100 #324_000
+    nodes = 20
 
     # MSRE https://www.tandfonline.com/doi/epdf/10.1080/00295450.2021.1943122?needAccess=true [1]
     # https://github.com/openmsr/msre/blob/master/core/docs/msrecore.pdf [2]
     # https://link.springer.com/article/10.1007/s10967-022-08535-3 [3]
     z1 = 200.66 # [2] #272 #[1]
     z2 = (z1 / 0.33) * 0.67
-    nodes = 20
     
     # 25,233 cm3/s # [1]
     # 75,708 cm3/s # [2]
@@ -276,7 +277,6 @@ if __name__ == '__main__':
     nz = 20
     
     dz = np.diff(np.linspace(0, z1+z2, nz))[0]
-    tf = 1000 #324_000
 
     lmbda = 0.9
     dt = lmbda * dz / nu1
@@ -366,12 +366,14 @@ if __name__ == '__main__':
         start = time()
         from matplotlib.animation import FuncAnimation
         fig, ax = plt.subplots()
+        max_val = np.max(concs[:, :])
         def update(frame):
             ax.clear()
             plt.xlabel('Space [cm]')
-            plt.vlines(z1, 0, np.max(concs), color='black')
+            plt.vlines(z1, 0, 1e1 * max_val, color='black')
             plt.ylabel('Concentration [at/cc]')
-            plt.ylim((0, np.max(concs[:, :])))
+            plt.yscale('log')
+            plt.ylim((1e-5 * max_val, 1e1 * max_val))
 
             ax.plot(zs, concs[frame, :], marker='.')
             ax.set_title(f'Time: {round(frame*dt, 4)} s')
