@@ -1,7 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import time
+from time import time
 from morty_pde_ode_compare import FormatAssist
+import os
 
 
 class IsobarSolve(FormatAssist):
@@ -169,8 +170,13 @@ class IsobarSolve(FormatAssist):
 if __name__ == '__main__':
     # Test this module using MSRE 135 isobar
     parallel = False
+    gif = True
+    savedir = './images'
+    tf = 100
+    spacenodes = 100
+
     L = 200.66 #824.24
-    V = 2e6
+    V = 2116111
     frac_in = 0.33
     frac_out = 0.67
     z1 = frac_in * L
@@ -188,11 +194,9 @@ if __name__ == '__main__':
     #mu = {'test': [2.1065742176025568e-05 + loss_core, 2.1065742176025568e-05]}
     #S = {'test': [24568909090.909092, 0]}
     #initial_guess = [0, 0]
-    spacenodes = 100
     dz = np.diff(np.linspace(0, z1+z2, spacenodes))[0]
     lmbda = 0.9
     dt = lmbda * dz / nu1
-    tf = 10
     ts = np.arange(0, tf+dt, dt)
     print(f'Number of iterations: {len(ts)}')
     isotopea = 'Sb135'
@@ -237,7 +241,7 @@ if __name__ == '__main__':
     r_1d_m1 = phi_th * ng_Xe135_m1
 
 
-    start = time.time()
+    start = time()
     solver = IsobarSolve(spacenodes, z1, z2, nu1, nu2, dt, tf, lama, lamb,
                          lamc, lamd, lamd_m1, FYd, br_c_d, br_dm1_d, vol1,
                          vol2, r_1a, r_2a, r_1b, r_2b, r_1c, r_2c, r_1d_m1,
@@ -246,11 +250,16 @@ if __name__ == '__main__':
         result_mat = solver.parallel_MORTY_solve()
     else:
         result_mat = solver.serial_MORTY_solve()
-    end = time.time()
+    end = time()
     print(f'Time taken : {round(end-start)}s')
     
     
     # Plotting
+
+    savedir = './images'
+    if not os.path.isdir(savedir):
+        os.makedirs(savedir)
+
     if tf > 3600 * 24:
         ts = ts / (3600*24)
         units = 'd'
@@ -264,5 +273,30 @@ if __name__ == '__main__':
     plt.ylabel('Concentration [at/cc]')
     plt.yscale('log')
     plt.legend()
-    plt.savefig('conc_time.png')
+    plt.savefig(f'{savedir}/isobar_conc_time.png')
     plt.close()
+
+
+    # Gif
+    if gif:
+        print(f'Estimated time to gif completion: {round(0.08 * len(ts))} s')
+        start = time()
+        from matplotlib.animation import FuncAnimation
+        fig, ax = plt.subplots()
+        max_conc = np.max(result_mat[0:-2, :, :])
+        def update(frame):
+            ax.clear()
+            plt.xlabel('Space [cm]')
+            plt.vlines(z1, 0, 1e1 * max_conc, color='black')
+            plt.ylabel('Concentration [at/cc]')
+            plt.ylim((1e-5 * max_conc, 1e1 * max_conc))
+            plt.yscale('log')
+
+            for i, iso in enumerate(labels):
+                ax.plot(zs, result_mat[frame, :, i], label=f'{iso}', marker='.')
+            ax.set_title(f'Time: {round(frame*dt, 4)} s')
+            plt.legend()
+        animation = FuncAnimation(fig, update, frames=len(ts), interval=1)
+        animation.save(f'{savedir}/isobar_evolution.gif', writer='pillow')
+        plt.close()
+        print(f'Gif took {time() - start} s')
