@@ -6,10 +6,8 @@ import os
 
 
 class IsobarSolve(FormatAssist):
-    def __init__(self, nodes, z1, z2, nu1, nu2, dt, tf, lama, lamb, lamc,
-                 lamd, lamd_m1, FYd, br_c_d, br_dm1_d, vol1, vol2, r_1a,
-                 r_2a, r_1b, r_2b, r_1c, r_2c, r_1d_m1, r_2d, r_1d, FYb,
-                 FYc, FYd_m1):
+    def __init__(self, nodes, z1, z2, nu1, nu2, lmbda, tf, lams,
+                 FYs, br_c_d, br_dm1_d, vol1, vol2, losses):
         """
         This class allows for the solve of a system of PDEs by 
         solving each individually in a Jacobi-like manner.
@@ -19,33 +17,73 @@ class IsobarSolve(FormatAssist):
         The next step up from this approach is to incorporate
         the spatial solve within the depletion solver itself.
 
+        Parameters
+        ----------
+        nodes : int
+            Number of spatial nodes
+        z1 : float
+            Position of in-core to ex-core transition
+        z2 : float
+            Position of ex-core to in-core transition
+        nu1 : float
+            Velocity in-core
+        nu2 : float
+            Velocity ex-core
+        lmbda : float
+            Time step times velocity divized by spatial mesh size
+        tf : float
+            Final time
+        lams : dict
+            key : str
+                Isobar nuclide indicator (a, b, c, d, or d_m1)
+            value : float
+                Decay constant for given nuclide
+        FYs : dict
+            key : string
+                Isobar nuclide indicator (a, b, c, d, or d_m1)
+            value : float
+                Fission yield for nuclice
+        br_c_d : float
+            Branching ratio for nuclide "c" to "d"
+        br_dm1_d : float
+            Branching ratio for nuclide "dm1" to "d"
+        vol1 : float
+            Volume of in-core region
+        vol2 : float
+            Volume of ex-core region
+        losses : dict
+            key : string
+                Isobar nuclide indicator (a, b, c, d, or d_m1)
+            value : float
+                Loss term due to parasitic absorption or other similar terms
+
         """
         self.nodes = nodes
         self.z1 = z1
         self.zs = np.linspace(0, z1+z2, nodes)
-        self.dt = dt
-        self.ts = np.arange(0, tf+dt, dt)
+        self.dt = lmbda * dz / nu1
+        self.ts = np.arange(0, tf+self.dt, self.dt)
         self.nu_vec = self._format_spatial(nu1, nu2)
 
         self.mu = {}
-        self.mu['a'] = self._format_spatial((lama + r_1a), (lama + r_2a))
-        self.mu['b'] = self._format_spatial((lamb + r_1b), (lamb + r_2b))
-        self.mu['c'] = self._format_spatial((lamc + r_1c), (lamb + r_2c))
-        self.mu['d_m1'] = self._format_spatial((lamd_m1 + r_1d_m1), (lamd_m1 + r_2d))
-        self.mu['d'] = self._format_spatial((lamd + r_1d), (lamd + r_2d))
+        self.mu['a'] = self._format_spatial((lams['a'] + losses['1a']), (lams['a'] + losses['2a']))
+        self.mu['b'] = self._format_spatial((lams['b'] + losses['1b']), (lams['b'] + losses['2b']))
+        self.mu['c'] = self._format_spatial((lams['c'] + losses['1c']), (lams['c'] + losses['2c']))
+        self.mu['d_m1'] = self._format_spatial((lams['d_m1'] + losses['1d_m1']), (lams['d_m1'] + losses['2d']))
+        self.mu['d'] = self._format_spatial((lams['d'] + losses['1d']), (lams['d'] + losses['2d']))
         self.S = {}
-        self.S['a'] = self._format_spatial((FYa/vol1), (0/vol2))
+        self.S['a'] = self._format_spatial((FYs['a']/vol1), (0/vol2))
 
-        self.lama = lama
-        self.lamb = lamb
-        self.lamc = lamc
-        self.lamd = lamd
-        self.lamd_m1 = lamd_m1
+        self.lama = lams['a']
+        self.lamb = lams['b']
+        self.lamc = lams['c']
+        self.lamd = lams['d']
+        self.lamd_m1 = lams['d_m1']
 
-        self.FYb = FYb
-        self.FYc = FYc
-        self.FYd = FYd
-        self.FYd_m1 = FYd_m1
+        self.FYb = FYs['b']
+        self.FYc = FYs['c']
+        self.FYd = FYs['d']
+        self.FYd_m1 = FYs['d_m1']
 
         self.br_c_d = br_c_d
         self.br_dm1_d = br_dm1_d
@@ -56,6 +94,21 @@ class IsobarSolve(FormatAssist):
         return
 
     def _external_PDE_no_step(self, conc, isotope):
+        """
+        This function applies a single time step iteration of the PDE
+
+        Parameters
+        ----------
+        conc : 1D vector
+            Concentration over spatial nodes at previous time
+        isotope : string
+            Nuclide isobar indicator (a, b, c, d, or d_m1)
+
+        Returns
+        -------
+        conc : 1D vector
+            Concentration over spatial nodes at current time
+        """
         S_vec = self.S[isotope]
         mu_vec = self.mu[isotope]
         J = np.arange(0, self.nodes)
@@ -71,9 +124,9 @@ class IsobarSolve(FormatAssist):
 
     def _initialize_result_mat(self):
         """
-        Set up the 3D result matrix of the form
+        Set up the 3D result matrix with the form
             time, space, nuclide
-            with 5 nucldies available
+            with 5 nucldies in the isobar available 
 
         """
         result_mat = np.zeros((len(self.ts), self.nodes, 5))
@@ -104,6 +157,18 @@ class IsobarSolve(FormatAssist):
     def _update_result_mat(self, result_mat, ti):
         """
         Updates the result matrix with new concentrations
+
+        Parameters
+        ----------
+        result_mat : 3D matrix
+            Holds values over time, space, and nuclide (in that order)
+        ti : int
+            Current time index
+        
+        Returns
+        -------
+        result_mat : 3D matrix
+            Holds values over time, space, and nuclide (in that order)
         """
         result_mat[ti, :, 0] = self.conc_a
         result_mat[ti, :, 1] = self.conc_b
@@ -117,6 +182,11 @@ class IsobarSolve(FormatAssist):
         """
         Run MORTY, calculating the isobar concentrations in-core and ex-core
             for the given problem.
+        
+        Returns
+        -------
+        result_mat : 3D matrix
+            Holds values over time, space, and nuclide (in that order)
         
         """
         result_mat = self._initialize_result_mat()
@@ -139,6 +209,11 @@ class IsobarSolve(FormatAssist):
         """
         Run MORTY, calculating the isobar concentrations in-core and ex-core
             for the given problem.
+
+        Returns
+        -------
+        result_mat : 3D matrix
+            Holds values over time, space, and nuclide (in that order)
         
         """
         import multiprocessing
@@ -170,12 +245,12 @@ class IsobarSolve(FormatAssist):
 if __name__ == '__main__':
     # Test this module using MSRE 135 isobar
     parallel = False
-    gif = True
+    gif = False
     savedir = './images'
     tf = 100
     spacenodes = 100
 
-    L = 200.66 #824.24
+    L = 608.06 #824.24
     V = 2116111
     frac_in = 0.33
     frac_out = 0.67
@@ -206,11 +281,13 @@ if __name__ == '__main__':
     isotoped = 'Xe135'
     br_c_d = 0.8349109
     br_dm1_d = 0.997
-    lama = np.log(2) / 1.68
-    lamb = np.log(2) / (19)
-    lamc = np.log(2) / (6.57 * 3600)
-    lamd_m1 = np.log(2) / (15.29 * 60)
-    lamd = np.log(2) / (9.14 * 3600)
+    lams = {}
+    lams['a'] = np.log(2) / 1.68
+    lams['b'] = np.log(2) / 19
+    lams['c'] = np.log(2) / (6.57*3600)
+    lams['d'] = np.log(2) / (15.29*3600)
+    lams['d_m1'] = np.log(2) / (9.14*3600)
+
     zs = np.linspace(0, z1+z2, spacenodes)
 
     PC = 1 / (3.2e-11)
@@ -221,31 +298,32 @@ if __name__ == '__main__':
     Yc = 0.0292737
     Yd_m1 = 0.0110156
     Yd = 0.000785125
-    FYa = PC * P * Ya   # atoms/s = fissions/J * J/s * yield_fraction
-    FYb = PC * P * Yb
-    FYc = PC * P * Yc
-    FYd_m1 = PC * P * Yd_m1
-    FYd = PC * P * Yd
+    FYs = {} # atoms/s = fissions/J * J/s * yield_fraction
+    FYs['a'] = PC * P * Ya
+    FYs['b'] = PC * P * Yb
+    FYs['c'] = PC * P * Yc
+    FYs['d'] = PC * P * Yd
+    FYs['d_m1'] = PC * P * Yd_m1
     phi_th = 6E12
-    r_1a = 0
-    r_2a = 0
-    r_1b = 0
-    r_2b = 0
-    r_2c = 0
-    r_2d = 0
+    losses = {}
+    losses['1a'] = 0
+    losses['2a'] = 0
+    losses['1b'] = 0
+    losses['2b'] = 0
+    losses['2c'] = 0
+    losses['2d'] = 0
     ng_I135 = 80.53724E-24
     ng_Xe135 = 2_666_886.8E-24
     ng_Xe135_m1 = 0 #10_187_238E-24
-    r_1c = phi_th * ng_I135
-    r_1d = phi_th * ng_Xe135
-    r_1d_m1 = phi_th * ng_Xe135_m1
+    losses['1c'] = phi_th * ng_I135
+    losses['1d'] = phi_th * ng_Xe135
+    losses['1d_m1'] = phi_th * ng_Xe135_m1
 
 
     start = time()
-    solver = IsobarSolve(spacenodes, z1, z2, nu1, nu2, dt, tf, lama, lamb,
-                         lamc, lamd, lamd_m1, FYd, br_c_d, br_dm1_d, vol1,
-                         vol2, r_1a, r_2a, r_1b, r_2b, r_1c, r_2c, r_1d_m1,
-                         r_2d, r_1d, FYb, FYc, FYd_m1)
+    solver = IsobarSolve(spacenodes, z1, z2, nu1, nu2, lmbda, tf,
+                         lams, FYs, br_c_d, br_dm1_d, vol1,
+                         vol2, losses)
     if parallel:
         result_mat = solver.parallel_MORTY_solve()
     else:
