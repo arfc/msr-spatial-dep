@@ -3,11 +3,13 @@ import matplotlib.pyplot as plt
 from time import time
 import os
 
+
 class FormatAssist:
     """ 
     Mixin class
 
     """
+
     def _format_spatial(self, term1, term2, vector_form=False):
         """
         Distribute term 1 in < z1, and term 2 in > z1.
@@ -22,7 +24,7 @@ class FormatAssist:
             Term in the ex-core region
         vector_form : bool
             Terms are given as spatial vectors rather than floats
-        
+
         Returns
         -------
         return_list : 1D numpy array
@@ -33,19 +35,19 @@ class FormatAssist:
         for zi, z in enumerate(self.zs):
             if z < self.z1:
                 if not vector_form:
-                   return_list.append(term1)
+                    return_list.append(term1)
                 else:
-                   return_list.append(term1[zi])
+                    return_list.append(term1[zi])
             elif z > self.z1:
                 if not vector_form:
-                   return_list.append(term2)
+                    return_list.append(term2)
                 else:
-                   return_list.append(term2[zi])
+                    return_list.append(term2[zi])
             else:
                 if not vector_form:
-                   return_list.append(0.5 * (term1 + term2))
+                    return_list.append(0.5 * (term1 + term2))
                 else:
-                   return_list.append(0.5 * (term1[zi] + term2[zi]))
+                    return_list.append(0.5 * (term1[zi] + term2[zi]))
         return np.asarray(return_list)
 
 
@@ -53,7 +55,6 @@ class DiffEqComp(FormatAssist):
     def __init__(self, mu, S, isotope, nu1, nu2, z1, z2,
                  nodes, tf, dt, initial_guess, lmbda):
         """
-
         This class generates results for comparing differential equations.
         Particularly, this class compares ODE depletion in time to
         PDE depletion in 1D space and time.
@@ -91,6 +92,7 @@ class DiffEqComp(FormatAssist):
         lmbda : float
             Numerical stability value (must be <1); 
             Time step times flow rate divided by spatial step
+
         """
         self.mu1, self.mu2 = mu[isotope]
         self.S1, self.S2 = S[isotope]
@@ -106,7 +108,6 @@ class DiffEqComp(FormatAssist):
         self.lmbda = lmbda
         return
 
-
     def _format_spatial(self, term1, term2, vector_form=False):
         """
         Distribute term 1 in < z1, and term 2 in > z1.
@@ -121,7 +122,7 @@ class DiffEqComp(FormatAssist):
             Term in the ex-core region
         vector_form : bool
             Terms are given as spatial vectors rather than floats
-        
+
         Returns
         -------
         return_list : 1D numpy array
@@ -132,21 +133,20 @@ class DiffEqComp(FormatAssist):
         for zi, z in enumerate(self.zs):
             if z < self.z1:
                 if not vector_form:
-                   return_list.append(term1)
+                    return_list.append(term1)
                 else:
-                   return_list.append(term1[zi])
+                    return_list.append(term1[zi])
             elif z > self.z1:
                 if not vector_form:
-                   return_list.append(term2)
+                    return_list.append(term2)
                 else:
-                   return_list.append(term2[zi])
+                    return_list.append(term2[zi])
             else:
                 if not vector_form:
-                   return_list.append(0.5 * (term1 + term2))
+                    return_list.append(0.5 * (term1 + term2))
                 else:
-                   return_list.append(0.5 * (term1[zi] + term2[zi]))
+                    return_list.append(0.5 * (term1[zi] + term2[zi]))
         return np.asarray(return_list)
-
 
     def _step_source(self):
         """
@@ -161,9 +161,9 @@ class DiffEqComp(FormatAssist):
             Flow rate terms over space
         mu_vec : 1D vector
             Loss terms over space
- 
+
         """
-        S_vec =  self._format_spatial(self.S1, self.S2, False)
+        S_vec = self._format_spatial(self.S1, self.S2, False)
         nu_vec = self._format_spatial(self.nu1, self.nu2, False)
         mu_vec = self._format_spatial(self.mu1, self.mu2, False)
         return S_vec, nu_vec, mu_vec
@@ -191,7 +191,6 @@ class DiffEqComp(FormatAssist):
                                       vector_form=True)
         return S_vec, nu_vec, mu_vec
 
-
     def fd_PDE(self, spatial_vary):
         """
 
@@ -213,7 +212,7 @@ class DiffEqComp(FormatAssist):
         N_z_t : 2D matrix
             Each row represents the spatial concentration
             at a given point in time
-            
+
         """
         conc = self.init_conc
         if not spatial_vary:
@@ -247,41 +246,40 @@ class DiffEqComp(FormatAssist):
         """
         conc = []
         for t in ts:
-            current = (self.init_conc[0] * np.exp(-self.mu1 * t) + 
+            current = (self.init_conc[0] * np.exp(-self.mu1 * t) +
                        self.S1/self.mu1 * (1 - np.exp(-self.mu1 * t)))
             conc.append(current)
         return conc
-
 
 
 if __name__ == '__main__':
     no_space_ODE = True
     spatial_source_variation = False
     gif = True
-    tf = 100 #324_000
+    tf = 100  # 324_000
     nodes = 20
 
     # MSRE https://www.tandfonline.com/doi/epdf/10.1080/00295450.2021.1943122?needAccess=true [1]
     # https://github.com/openmsr/msre/blob/master/core/docs/msrecore.pdf [2]
     # https://link.springer.com/article/10.1007/s10967-022-08535-3 [3]
-    z1 = 200.66 # [2] #272 #[1]
+    z1 = 200.66  # [2] #272 #[1]
     z2 = (z1 / 0.33) * 0.67
-    
+
     # 25,233 cm3/s # [1]
     # 75,708 cm3/s # [2]
-    core_diameter = 140.335 #[2]
-    fuel_frac = 0.225 #[2]
+    core_diameter = 140.335  # [2]
+    fuel_frac = 0.225  # [2]
     xsarea = fuel_frac * (np.pi * (core_diameter/2)**2)
     nu = 75708 / xsarea
-    nu1 = nu #66666.66 [3]
-    nu2 = nu #66666.66 [3]
+    nu1 = nu  # 66666.66 [3]
+    nu2 = nu  # 66666.66 [3]
     loss_core = 6e12 * 2666886.8E-24
     isotope = 'test'
     mu = {'test': [2.1065742176025568e-05 + loss_core, 2.1065742176025568e-05]}
     S = {'test': [24568909090.909092, 0]}
     initial_guess = [0, 0]
     nz = 20
-    
+
     dz = np.diff(np.linspace(0, z1+z2, nz))[0]
 
     lmbda = 0.9
@@ -293,7 +291,6 @@ if __name__ == '__main__':
     print(f'Temporal nodes: {len(ts)}')
     print(f'Net data: {nodes * len(ts)}')
 
-
     start = time()
     zs, ts, concs = Comp.fd_PDE(False)
     if spatial_source_variation:
@@ -304,7 +301,6 @@ if __name__ == '__main__':
     end = time()
     print(f'Time taken: {round(end-start)} s')
 
-
     # Plotting
     savedir = './images'
     if not os.path.isdir(savedir):
@@ -313,7 +309,7 @@ if __name__ == '__main__':
     plt.plot(zs, concs[0, :], label='Initial')
     if spatial_source_variation:
         plt.plot(zs, concs_vary[0, :], label='Initial (Spatial Source)',
-                 linestyle = '-.', color='b')
+                 linestyle='-.', color='b')
     if no_space_ODE:
         plt.hlines(conc_no_space[0], zs[0], zs[-1],
                    label='Initial No Spatial Component', linestyle='--')
@@ -325,7 +321,7 @@ if __name__ == '__main__':
     if spatial_source_variation:
         plt.plot(zs, concs_vary[int(len(ts)/2), :],
                  label='Intermediate (Spatial Source)',
-                 linestyle = '-.', color='orange')
+                 linestyle='-.', color='orange')
     if no_space_ODE:
         plt.hlines(conc_no_space[int(len(ts)/2)], zs[0], zs[-1],
                    label='Intermediate No Spatial Component',
@@ -333,7 +329,7 @@ if __name__ == '__main__':
     plt.plot(zs, concs[-1, :], label='Final')
     if spatial_source_variation:
         plt.plot(zs, concs_vary[-1, :], label='Final (Spatial Source)',
-                 linestyle = '-.', color='g')
+                 linestyle='-.', color='g')
     if no_space_ODE:
         plt.hlines(conc_no_space[-1], zs[0], zs[-1],
                    label='Final No Spatial Component',
@@ -344,7 +340,6 @@ if __name__ == '__main__':
     plt.ylabel('Conc [at/cc]')
     plt.savefig(f'{savedir}/PDE_ODE_space.png')
     plt.close()
-
 
     plt.plot(ts, concs[:, int(len(zs)/3)][:-1], label='Core Outlet')
     plt.plot(ts, concs[:, -1][:-1], label='Excore Outlet')
@@ -367,25 +362,24 @@ if __name__ == '__main__':
 
     # Core inlet differences
     if spatial_source_variation:
-        fnl_pct_diff = (np.abs(concs[-1, -1] - concs_vary[-1, -1]) 
-                           / (2 * (concs[-1, -1] + concs_vary[-1, -1])) * 100)
+        fnl_pct_diff = (np.abs(concs[-1, -1] - concs_vary[-1, -1])
+                        / (2 * (concs[-1, -1] + concs_vary[-1, -1])) * 100)
         print(f'Percent difference core inlet spatial source: {fnl_pct_diff}%')
         avg_pcnt_diff = (np.abs(np.mean(concs[-1, :])
-                                 - np.mean(concs_vary[-1, :]))  
-                                 / (2 * (np.mean(concs[-1, :]) 
-                                         + np.mean(concs_vary[-1, :]))) * 100)
+                                - np.mean(concs_vary[-1, :]))
+                         / (2 * (np.mean(concs[-1, :])
+                                 + np.mean(concs_vary[-1, :]))) * 100)
         print(f'Percent difference average spatial source: {avg_pcnt_diff}%')
 
     if no_space_ODE:
-        final_pcnt_diff = (np.abs(concs[-1, -1] - conc_no_space[-1]) 
+        final_pcnt_diff = (np.abs(concs[-1, -1] - conc_no_space[-1])
                            / (2 * (concs[-1, -1] + conc_no_space[-1])) * 100)
         print(f'Percent difference core inlet ODE: {final_pcnt_diff}%')
         mean_conc = np.mean(concs[-1, :])
         mean_ns_conc = conc_no_space[-1]
-        avg_pcnt_diff = (np.abs(mean_conc - mean_ns_conc) 
+        avg_pcnt_diff = (np.abs(mean_conc - mean_ns_conc)
                          / (2 * (mean_conc + mean_ns_conc)) * 100)
         print(f'Percent difference average ODE: {avg_pcnt_diff}%')
-
 
     # Gif
     if gif:
@@ -394,6 +388,7 @@ if __name__ == '__main__':
         from matplotlib.animation import FuncAnimation
         fig, ax = plt.subplots()
         max_val = np.max(concs[:, :])
+
         def update(frame):
             ax.clear()
             plt.xlabel('Space [cm]')
