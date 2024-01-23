@@ -66,11 +66,17 @@ class IsobarSolve(FormatAssist):
         self.nu_vec = self._format_spatial(nu1, nu2)
 
         self.mu = {}
-        self.mu['a'] = self._format_spatial((lams['a'] + losses['1a']), (lams['a'] + losses['2a']))
-        self.mu['b'] = self._format_spatial((lams['b'] + losses['1b']), (lams['b'] + losses['2b']))
-        self.mu['c'] = self._format_spatial((lams['c'] + losses['1c']), (lams['c'] + losses['2c']))
-        self.mu['d_m1'] = self._format_spatial((lams['d_m1'] + losses['1d_m1']), (lams['d_m1'] + losses['2d']))
-        self.mu['d'] = self._format_spatial((lams['d'] + losses['1d']), (lams['d'] + losses['2d']))
+        self.mu['a'] = self._format_spatial((lams['a'] + losses['1a']),
+                                            (lams['a'] + losses['2a']))
+        self.mu['b'] = self._format_spatial((lams['b'] + losses['1b']),
+                                            (lams['b'] + losses['2b']))
+        self.mu['c'] = self._format_spatial((lams['c'] + losses['1c']),
+                                            (lams['c'] + losses['2c']))
+        self.mu['d_m1'] = self._format_spatial((lams['d_m1']
+                                                + losses['1d_m1']),
+                                               (lams['d_m1'] + losses['2d']))
+        self.mu['d'] = self._format_spatial((lams['d'] + losses['1d']),
+                                            (lams['d'] + losses['2d']))
         self.S = {}
         self.S['a'] = self._format_spatial((FYs['a']/vol1), (0/vol2))
 
@@ -147,11 +153,26 @@ class IsobarSolve(FormatAssist):
         Update source terms based on concentrations
 
         """
-        self.S['b'] = self._format_spatial((self.conc_a*self.lama + self.FYb/self.vol1), (self.conc_a*self.lama), vector_form=True)
-        self.S['c'] = self._format_spatial((self.conc_b*self.lamb + self.FYc/self.vol1), (self.conc_b*self.lama), vector_form=True) 
-        self.S['d_m1'] = self._format_spatial((self.FYd_m1/self.vol1), (0/self.vol2)) 
-        self.S['d'] = self._format_spatial((self.br_c_d*self.conc_c*self.lamc + self.FYd/self.vol1 + self.br_dm1_d*self.conc_d_m1*self.lamd_m1),
-                                        (self.br_c_d*self.conc_c*self.lamc + self.br_dm1_d*self.conc_d_m1*self.lamd_m1), vector_form=True) 
+        self.S['b'] = self._format_spatial((self.conc_a*self.lama
+                                            + self.FYb/self.vol1),
+                                            (self.conc_a*self.lama),
+                                            vector_form=True)
+        self.S['c'] = self._format_spatial((self.conc_b*self.lamb
+                                            + self.FYc/self.vol1),
+                                            (self.conc_b*self.lama),
+                                            vector_form=True) 
+        self.S['d_m1'] = self._format_spatial((self.FYd_m1/self.vol1),
+                                              (0/self.vol2)) 
+        self.S['d'] = self._format_spatial((self.br_c_d*self.conc_c*self.lamc
+                                            + self.FYd/self.vol1
+                                            + self.br_dm1_d
+                                            *self.conc_d_m1
+                                            *self.lamd_m1),
+                                            (self.br_c_d*self.conc_c*self.lamc
+                                             + self.br_dm1_d
+                                             *self.conc_d_m1
+                                             *self.lamd_m1),
+                                             vector_form=True) 
         return
 
     def _update_result_mat(self, result_mat, ti):
@@ -225,11 +246,12 @@ class IsobarSolve(FormatAssist):
             self._update_sources()
 
             with multiprocessing.Pool() as pool:
-                res_list = pool.starmap(self._external_PDE_no_step, [(self.conc_a, 'a'),
-                                                    (self.conc_b, 'b'),
-                                                    (self.conc_c, 'c'),
-                                                    (self.conc_d_m1, 'd_m1'),
-                                                    (self.conc_d, 'd')])
+                res_list = pool.starmap(self._external_PDE_no_step,
+                                        [(self.conc_a, 'a'),
+                                         (self.conc_b, 'b'),
+                                         (self.conc_c, 'c'),
+                                         (self.conc_d_m1, 'd_m1'),
+                                         (self.conc_d, 'd')])
             self.conc_a = res_list[0]
             self.conc_b = res_list[1]
             self.conc_c = res_list[2]
