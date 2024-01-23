@@ -93,7 +93,7 @@ class IsobarSolve(FormatAssist):
 
         self.br_c_d = br_c_d
         self.br_dm1_d = br_dm1_d
-        
+
         self.vol1 = vol1
         self.vol2 = vol2
 
@@ -147,7 +147,7 @@ class IsobarSolve(FormatAssist):
         self.conc_d = np.array([0] * self.nodes)
         result_mat[0, :, 4] = self.conc_d
         return result_mat
-    
+
     def _update_sources(self):
         """
         Update source terms based on concentrations
@@ -155,24 +155,24 @@ class IsobarSolve(FormatAssist):
         """
         self.S['b'] = self._format_spatial((self.conc_a*self.lama
                                             + self.FYb/self.vol1),
-                                            (self.conc_a*self.lama),
-                                            vector_form=True)
+                                           (self.conc_a*self.lama),
+                                           vector_form=True)
         self.S['c'] = self._format_spatial((self.conc_b*self.lamb
                                             + self.FYc/self.vol1),
-                                            (self.conc_b*self.lama),
-                                            vector_form=True) 
+                                           (self.conc_b*self.lama),
+                                           vector_form=True)
         self.S['d_m1'] = self._format_spatial((self.FYd_m1/self.vol1),
-                                              (0/self.vol2)) 
+                                              (0/self.vol2))
         self.S['d'] = self._format_spatial((self.br_c_d*self.conc_c*self.lamc
                                             + self.FYd/self.vol1
                                             + self.br_dm1_d
-                                            *self.conc_d_m1
-                                            *self.lamd_m1),
-                                            (self.br_c_d*self.conc_c*self.lamc
-                                             + self.br_dm1_d
-                                             *self.conc_d_m1
-                                             *self.lamd_m1),
-                                             vector_form=True) 
+                                            * self.conc_d_m1
+                                            * self.lamd_m1),
+                                           (self.br_c_d*self.conc_c*self.lamc
+                                            + self.br_dm1_d
+                                            * self.conc_d_m1
+                                            * self.lamd_m1),
+                                           vector_form=True)
         return
 
     def _update_result_mat(self, result_mat, ti):
@@ -185,7 +185,7 @@ class IsobarSolve(FormatAssist):
             Holds values over time, space, and nuclide (in that order)
         ti : int
             Current time index
-        
+
         Returns
         -------
         result_mat : 3D matrix
@@ -198,21 +198,20 @@ class IsobarSolve(FormatAssist):
         result_mat[ti, :, 4] = self.conc_d
         return result_mat
 
-
     def serial_MORTY_solve(self):
         """
         Run MORTY, calculating the isobar concentrations in-core and ex-core
             for the given problem.
-        
+
         Returns
         -------
         result_mat : 3D matrix
             Holds values over time, space, and nuclide (in that order)
-        
+
         """
         result_mat = self._initialize_result_mat()
         for ti, t in enumerate(ts[:-1]):
-    
+
             self._update_sources()
 
             self.conc_a = self._external_PDE_no_step(self.conc_a, 'a')
@@ -220,11 +219,10 @@ class IsobarSolve(FormatAssist):
             self.conc_c = self._external_PDE_no_step(self.conc_c, 'c')
             self.conc_d_m1 = self._external_PDE_no_step(self.conc_d_m1, 'd_m1')
             self.conc_d = self._external_PDE_no_step(self.conc_d, 'd')
-    
-            result_mat = self._update_result_mat(result_mat, ti)
-    
-        return result_mat
 
+            result_mat = self._update_result_mat(result_mat, ti)
+
+        return result_mat
 
     def parallel_MORTY_solve(self):
         """
@@ -235,7 +233,7 @@ class IsobarSolve(FormatAssist):
         -------
         result_mat : 3D matrix
             Holds values over time, space, and nuclide (in that order)
-        
+
         """
         import multiprocessing
         result_mat = self._initialize_result_mat()
@@ -263,7 +261,6 @@ class IsobarSolve(FormatAssist):
         return result_mat
 
 
-
 if __name__ == '__main__':
     # Test this module using MSRE 135 isobar
     parallel = False
@@ -272,7 +269,7 @@ if __name__ == '__main__':
     tf = 100
     spacenodes = 100
 
-    L = 608.06 #824.24
+    L = 608.06  # 824.24
     V = 2116111
     frac_in = 0.33
     frac_out = 0.67
@@ -287,10 +284,10 @@ if __name__ == '__main__':
     nu1 = nu
     nu2 = nu
     loss_core = 6e12 * 2666886.8E-24
-    #isotope = 'test'
-    #mu = {'test': [2.1065742176025568e-05 + loss_core, 2.1065742176025568e-05]}
-    #S = {'test': [24568909090.909092, 0]}
-    #initial_guess = [0, 0]
+    # isotope = 'test'
+    # mu = {'test': [2.1065742176025568e-05 + loss_core, 2.1065742176025568e-05]}
+    # S = {'test': [24568909090.909092, 0]}
+    # initial_guess = [0, 0]
     dz = np.diff(np.linspace(0, z1+z2, spacenodes))[0]
     lmbda = 0.9
     dt = lmbda * dz / nu1
@@ -313,14 +310,14 @@ if __name__ == '__main__':
     zs = np.linspace(0, z1+z2, spacenodes)
 
     PC = 1 / (3.2e-11)
-    P = 8e6 # 8MW
+    P = 8e6  # 8MW
     # Yields from ENDF OpenMC thermal data
     Ya = 0.00145764
     Yb = 0.0321618
     Yc = 0.0292737
     Yd_m1 = 0.0110156
     Yd = 0.000785125
-    FYs = {} # atoms/s = fissions/J * J/s * yield_fraction
+    FYs = {}  # atoms/s = fissions/J * J/s * yield_fraction
     FYs['a'] = PC * P * Ya
     FYs['b'] = PC * P * Yb
     FYs['c'] = PC * P * Yc
@@ -336,11 +333,10 @@ if __name__ == '__main__':
     losses['2d'] = 0
     ng_I135 = 80.53724E-24
     ng_Xe135 = 2_666_886.8E-24
-    ng_Xe135_m1 = 0 #10_187_238E-24
+    ng_Xe135_m1 = 0  # 10_187_238E-24
     losses['1c'] = phi_th * ng_I135
     losses['1d'] = phi_th * ng_Xe135
     losses['1d_m1'] = phi_th * ng_Xe135_m1
-
 
     start = time()
     solver = IsobarSolve(spacenodes, z1, z2, nu1, nu2, lmbda, tf,
@@ -352,8 +348,7 @@ if __name__ == '__main__':
         result_mat = solver.serial_MORTY_solve()
     end = time()
     print(f'Time taken : {round(end-start)}s')
-    
-    
+
     # Plotting
 
     savedir = './images'
@@ -376,7 +371,6 @@ if __name__ == '__main__':
     plt.savefig(f'{savedir}/isobar_conc_time.png')
     plt.close()
 
-
     # Gif
     if gif:
         print(f'Estimated time to gif completion: {round(0.08 * len(ts))} s')
@@ -384,6 +378,7 @@ if __name__ == '__main__':
         from matplotlib.animation import FuncAnimation
         fig, ax = plt.subplots()
         max_conc = np.max(result_mat[0:-2, :, :])
+
         def update(frame):
             ax.clear()
             plt.xlabel('Space [cm]')
@@ -393,7 +388,8 @@ if __name__ == '__main__':
             plt.yscale('log')
 
             for i, iso in enumerate(labels):
-                ax.plot(zs, result_mat[frame, :, i], label=f'{iso}', marker='.')
+                ax.plot(zs, result_mat[frame, :, i],
+                        label=f'{iso}', marker='.')
             ax.set_title(f'Time: {round(frame*dt, 4)} s')
             plt.legend()
         animation = FuncAnimation(fig, update, frames=len(ts), interval=1)
