@@ -50,12 +50,13 @@ class FormatAssist:
 
 
 class DiffEqComp(FormatAssist):
-    def __init__(self, mu, S, isotope, nu1, nu2, z1, z2, nodes, tf, dt, initial_guess, lmbda):
+    def __init__(self, mu, S, isotope, nu1, nu2, z1, z2,
+                 nodes, tf, dt, initial_guess, lmbda):
         """
 
         This class generates results for comparing differential equations.
-        Particularly, this class compares ODE depletion in time to PDE depletion
-        in 1D space and time.
+        Particularly, this class compares ODE depletion in time to
+        PDE depletion in 1D space and time.
 
         Parameters
         ----------
@@ -100,7 +101,8 @@ class DiffEqComp(FormatAssist):
         self.tf = tf
         self.ts = np.arange(0, tf+dt, dt)
         self.z1 = z1
-        self.init_conc = self._format_spatial(initial_guess[0], initial_guess[1])
+        self.init_conc = self._format_spatial(initial_guess[0],
+                                              initial_guess[1])
         self.lmbda = lmbda
         return
 
@@ -182,9 +184,11 @@ class DiffEqComp(FormatAssist):
 
         """
         core_mod = np.pi/2 * np.sin(self.zs * np.pi / self.z1)
-        S_vec = self._format_spatial(self.S1*core_mod, self.S2, vector_form=True)
+        S_vec = self._format_spatial(self.S1*core_mod, self.S2,
+                                     vector_form=True)
         nu_vec = self._format_spatial(self.nu1, self.nu2)
-        mu_vec = self._format_spatial(self.mu1*core_mod, self.mu2, vector_form=True)
+        mu_vec = self._format_spatial(self.mu1*core_mod, self.mu2,
+                                      vector_form=True)
         return S_vec, nu_vec, mu_vec
 
 
@@ -207,7 +211,8 @@ class DiffEqComp(FormatAssist):
         ts : 1D vector
             Time nodes
         N_z_t : 2D matrix
-            Each row represents the spatial concentration at a given point in time
+            Each row represents the spatial concentration
+            at a given point in time
             
         """
         conc = self.init_conc
@@ -223,7 +228,8 @@ class DiffEqComp(FormatAssist):
         conc_mult = 1 - mu_vec * self.dt
         add_source = S_vec * self.dt
         for ti, t in enumerate(self.ts):
-            conc = add_source + conc_mult * conc + self.lmbda * (conc[Jm1] - conc)
+            conc = (add_source + conc_mult * conc
+                    + self.lmbda * (conc[Jm1] - conc))
             N_z_t[ti+1, :] = conc
 
         return self.zs, self.ts, N_z_t
@@ -280,7 +286,8 @@ if __name__ == '__main__':
 
     lmbda = 0.9
     dt = lmbda * dz / nu1
-    Comp = DiffEqComp(mu, S, isotope, nu1, nu2, z1, z2, nodes, tf, dt, initial_guess, lmbda)
+    Comp = DiffEqComp(mu, S, isotope, nu1, nu2, z1, z2,
+                      nodes, tf, dt, initial_guess, lmbda)
     print(f'Spatial nodes: {nodes}')
     ts = np.arange(0, tf+dt, dt)
     print(f'Temporal nodes: {len(ts)}')
@@ -305,22 +312,32 @@ if __name__ == '__main__':
 
     plt.plot(zs, concs[0, :], label='Initial')
     if spatial_source_variation:
-        plt.plot(zs, concs_vary[0, :], label='Initial (Spatial Source)', linestyle = '-.', color='b')
+        plt.plot(zs, concs_vary[0, :], label='Initial (Spatial Source)',
+                 linestyle = '-.', color='b')
     if no_space_ODE:
-        plt.hlines(conc_no_space[0], zs[0], zs[-1], label='Initial No Spatial Component', linestyle='--')
-        plt.vlines(z1, 0, np.max(conc_no_space), label='Core Outlet', color='black')
+        plt.hlines(conc_no_space[0], zs[0], zs[-1],
+                   label='Initial No Spatial Component', linestyle='--')
+        plt.vlines(z1, 0, np.max(conc_no_space), label='Core Outlet',
+                   color='black')
     else:
         plt.vlines(z1, 0, np.max(concs), color='black')
     plt.plot(zs, concs[int(len(ts)/2), :], label='Intermediate')
     if spatial_source_variation:
-        plt.plot(zs, concs_vary[int(len(ts)/2), :], label='Intermediate (Spatial Source)', linestyle = '-.', color='orange')
+        plt.plot(zs, concs_vary[int(len(ts)/2), :],
+                 label='Intermediate (Spatial Source)',
+                 linestyle = '-.', color='orange')
     if no_space_ODE:
-        plt.hlines(conc_no_space[int(len(ts)/2)], zs[0], zs[-1], label='Intermediate No Spatial Component', linestyle='--', color='orange')
+        plt.hlines(conc_no_space[int(len(ts)/2)], zs[0], zs[-1],
+                   label='Intermediate No Spatial Component',
+                   linestyle='--', color='orange')
     plt.plot(zs, concs[-1, :], label='Final')
     if spatial_source_variation:
-        plt.plot(zs, concs_vary[-1, :], label='Final (Spatial Source)', linestyle = '-.', color='g')
+        plt.plot(zs, concs_vary[-1, :], label='Final (Spatial Source)',
+                 linestyle = '-.', color='g')
     if no_space_ODE:
-        plt.hlines(conc_no_space[-1], zs[0], zs[-1], label='Final No Spatial Component', linestyle='--', color='g')
+        plt.hlines(conc_no_space[-1], zs[0], zs[-1],
+                   label='Final No Spatial Component',
+                   linestyle='--', color='g')
     plt.yscale('log')
     plt.legend()
     plt.xlabel('Space [cm]')
@@ -332,8 +349,12 @@ if __name__ == '__main__':
     plt.plot(ts, concs[:, int(len(zs)/3)][:-1], label='Core Outlet')
     plt.plot(ts, concs[:, -1][:-1], label='Excore Outlet')
     if spatial_source_variation:
-        plt.plot(ts, concs_vary[:, int(len(zs)/3)][:-1], label='Core Outlet (Spatial Source)', linestyle='-.', color='b')
-        plt.plot(ts, concs_vary[:, -1][:-1], label='Excore Outlet (Spatial Source)', linestyle='-.', color='orange')
+        plt.plot(ts, concs_vary[:, int(len(zs)/3)][:-1],
+                 label='Core Outlet (Spatial Source)',
+                 linestyle='-.', color='b')
+        plt.plot(ts, concs_vary[:, -1][:-1],
+                 label='Excore Outlet (Spatial Source)',
+                 linestyle='-.', color='orange')
 
     if no_space_ODE:
         plt.plot(ts, conc_no_space, label='No Spatial Component')
@@ -346,17 +367,23 @@ if __name__ == '__main__':
 
     # Core inlet differences
     if spatial_source_variation:
-        final_pcnt_diff = np.abs(concs[-1, -1] - concs_vary[-1, -1]) / (2 * (concs[-1, -1] + concs_vary[-1, -1])) * 100
-        print(f'Percent difference core inlet spatial source: {final_pcnt_diff}%')
-        avg_pcnt_diff = np.abs(np.mean(concs[-1, :]) - np.mean(concs_vary[-1, :])) / (2 * (np.mean(concs[-1, :]) + np.mean(concs_vary[-1, :]))) * 100
+        fnl_pct_diff = (np.abs(concs[-1, -1] - concs_vary[-1, -1]) 
+                           / (2 * (concs[-1, -1] + concs_vary[-1, -1])) * 100)
+        print(f'Percent difference core inlet spatial source: {fnl_pct_diff}%')
+        avg_pcnt_diff = (np.abs(np.mean(concs[-1, :])
+                                 - np.mean(concs_vary[-1, :]))  
+                                 / (2 * (np.mean(concs[-1, :]) 
+                                         + np.mean(concs_vary[-1, :]))) * 100)
         print(f'Percent difference average spatial source: {avg_pcnt_diff}%')
 
     if no_space_ODE:
-        final_pcnt_diff = np.abs(concs[-1, -1] - conc_no_space[-1]) / (2 * (concs[-1, -1] + conc_no_space[-1])) * 100
+        final_pcnt_diff = (np.abs(concs[-1, -1] - conc_no_space[-1]) 
+                           / (2 * (concs[-1, -1] + conc_no_space[-1])) * 100)
         print(f'Percent difference core inlet ODE: {final_pcnt_diff}%')
         mean_conc = np.mean(concs[-1, :])
         mean_ns_conc = conc_no_space[-1]
-        avg_pcnt_diff = np.abs(mean_conc - mean_ns_conc) / (2 * (mean_conc + mean_ns_conc)) * 100
+        avg_pcnt_diff = (np.abs(mean_conc - mean_ns_conc) 
+                         / (2 * (mean_conc + mean_ns_conc)) * 100)
         print(f'Percent difference average ODE: {avg_pcnt_diff}%')
 
 
