@@ -128,39 +128,62 @@ class IsobarSolve(FormatAssist):
 
         return conc
 
-    def _initialize_result_mat(self):
+    def _initialize_result_mat(self, PDE=True):
         """
         Set up the 3D result matrix with the form
             time, space, nuclide
             with 5 nucldies in the isobar available 
+        
+        Parameters
+        ----------
+        PDE : bool
+            If using PDE True, False for ODE
+
+        Returns
+        -------
+        result_mat : 3D matrix (2D if PDE False)
+            Holds values over time, space, and nuclide (in that order)
 
         """
-        result_mat = np.zeros((len(self.ts), self.nodes, 5))
-        self.conc_a = np.array([0] * self.nodes)
+        if PDE:
+            nodes = self.nodes
+        else:
+            nodes = 1
+        result_mat = np.zeros((len(self.ts), nodes, 5))
+        self.conc_a = np.array([0] * nodes)
         result_mat[0, :, 0] = self.conc_a
-        self.conc_b = np.array([0] * self.nodes)
+        self.conc_b = np.array([0] * nodes)
         result_mat[0, :, 1] = self.conc_b
-        self.conc_c = np.array([0] * self.nodes)
+        self.conc_c = np.array([0] * nodes)
         result_mat[0, :, 2] = self.conc_c
-        self.conc_d_m1 = np.array([0] * self.nodes)
+        self.conc_d_m1 = np.array([0] * nodes)
         result_mat[0, :, 3] = self.conc_d_m1
-        self.conc_d = np.array([0] * self.nodes)
+        self.conc_d = np.array([0] * nodes)
         result_mat[0, :, 4] = self.conc_d
         return result_mat
 
-    def _update_sources(self):
+    def _update_sources(self, PDE=True):
         """
         Update source terms based on concentrations
 
+        Parameters
+        ----------
+        PDE : bool
+            True if PDE, False if ODE
+
         """
+        if PDE:
+            vector_form = True
+        else:
+            vector_form = False
         self.S['b'] = self._format_spatial((self.conc_a*self.lama
                                             + self.FYb/self.vol1),
                                            (self.conc_a*self.lama),
-                                           vector_form=True)
+                                           vector_form=vector_form)
         self.S['c'] = self._format_spatial((self.conc_b*self.lamb
                                             + self.FYc/self.vol1),
                                            (self.conc_b*self.lama),
-                                           vector_form=True)
+                                           vector_form=vector_form)
         self.S['d_m1'] = self._format_spatial((self.FYd_m1/self.vol1),
                                               (0/self.vol2))
         self.S['d'] = self._format_spatial((self.br_c_d*self.conc_c*self.lamc
@@ -172,7 +195,7 @@ class IsobarSolve(FormatAssist):
                                             + self.br_dm1_d
                                             * self.conc_d_m1
                                             * self.lamd_m1),
-                                           vector_form=True)
+                                           vector_form=vector_form)
         return
 
     def _update_result_mat(self, result_mat, ti):
@@ -223,6 +246,55 @@ class IsobarSolve(FormatAssist):
             result_mat = self._update_result_mat(result_mat, ti)
 
         return result_mat
+    
+    def _external_ODE_no_step(self, conc, isotope, t):
+        """
+        This function applies a single time step iteration of the ODE
+
+        Parameters
+        ----------
+        conc : float
+            Initial concentration
+        isotope : string
+            Nuclide isobar indicator (a, b, c, d, or d_m1)
+
+        Returns
+        -------
+        conc : float
+            Concentration at current time
+        """
+
+        conc = (conc * np.exp(-self.mu[isotope][0] * t) + 
+                self.S[isotope][0] / self.mu[isotope][0] * 
+                (1 - np.exp(-self.mu[isotope][0] * t)))
+
+        return conc
+
+    
+    def ode_solve(self):
+        """
+        Solve the time dependent ODE
+        
+        """
+        ODE_result_mat = self._initialize_result_mat(False)
+        conc0_a = self.conc_a
+        conc0_b = self.conc_b
+        conc0_c = self.conc_c
+        conc0_d = self.conc_d
+        conc0_d_m1 = self.conc_d_m1
+
+        for ti, t in enumerate(ts[:-1]):
+            self._update_sources(False)
+
+            self.conc_a = self._external_ODE_no_step(conc0_a, 'a', t)
+            self.conc_b = self._external_ODE_no_step(conc0_b, 'b', t)
+            self.conc_c = self._external_ODE_no_step(conc0_c, 'c', t)
+            self.conc_d_m1 = self._external_ODE_no_step(conc0_d_m1, 'd_m1', t)
+            self.conc_d = self._external_ODE_no_step(conc0_d, 'd', t)
+
+            ODE_result_mat = self._update_result_mat(ODE_result_mat, ti)
+
+        return ODE_result_mat
 
     def parallel_MORTY_solve(self):
         """
@@ -265,14 +337,17 @@ if __name__ == '__main__':
     # Test this module using MSRE 135 isobar
     parallel = False
     gif = False
+    ode = True
+    scaled_flux = True
     savedir = './images'
-    tf = 100
+    tf = 1.25 * 24 * 3600
     spacenodes = 100
 
     L = 608.06  # 824.24
     V = 2116111
     frac_in = 0.33
     frac_out = 0.67
+    core_outlet_node = int(spacenodes * frac_in)
     z1 = frac_in * L
     z2 = frac_out * L
     vol1 = frac_in * V
@@ -346,8 +421,31 @@ if __name__ == '__main__':
         result_mat = solver.parallel_MORTY_solve()
     else:
         result_mat = solver.serial_MORTY_solve()
+    if ode:
+        if scaled_flux:
+            P = 8e6 * frac_in
+            FYs['a'] = PC * P * Ya
+            FYs['b'] = PC * P * Yb
+            FYs['c'] = PC * P * Yc
+            FYs['d'] = PC * P * Yd
+            FYs['d_m1'] = PC * P * Yd_m1
+            phi_th = 6E12 * frac_in
+            losses['1c'] = phi_th * ng_I135
+            losses['1d'] = phi_th * ng_Xe135
+            losses['1d_m1'] = phi_th * ng_Xe135_m1
+            solver = IsobarSolve(spacenodes, z1, z2, nu1, nu2, lmbda, tf,
+                                lams, FYs, br_c_d, br_dm1_d, vol1,
+                                vol2, losses)
+
+        ode_result_mat = solver.ode_solve()
     end = time()
     print(f'Time taken : {round(end-start)}s')
+
+
+
+
+
+
 
     # Plotting
 
@@ -362,14 +460,28 @@ if __name__ == '__main__':
         units = 's'
     labels = [isotopea, isotopeb, isotopec, isotoped_m1, isotoped]
     for i, iso in enumerate(labels):
-        plt.plot(ts[:-2], result_mat[0:-2, 0, i], label=f'{iso} Exiting Core')
-        plt.plot(ts[:-2], result_mat[0:-2, 1, i], label=f'{iso} Entering Core')
-    plt.xlabel(f'Time [{units}]')
-    plt.ylabel('Concentration [at/cc]')
-    plt.yscale('log')
-    plt.legend()
-    plt.savefig(f'{savedir}/isobar_conc_time.png')
-    plt.close()
+        plt.plot(ts[:-2], result_mat[0:-2, core_outlet_node, i], label=f'{iso} Exiting Core')
+        plt.plot(ts[:-2], result_mat[0:-2, -1, i], label=f'{iso} Entering Core')
+        if ode:
+            plt.plot(ts[:-2], ode_result_mat[0:-2, 0, i], label=f'{iso} ODE', linestyle = '--')
+
+        plt.xlabel(f'Time [{units}]')
+        plt.ylabel('Concentration [at/cc]')
+        plt.yscale('log')
+        plt.legend()
+        plt.savefig(f'{savedir}/nuc_{iso}_conc_time.png')
+        plt.close()
+
+    if ode:
+        for i, iso in enumerate(labels):
+            print('-' * 50)
+            print(f'{iso} atom densities')
+            PDE_val_core_inlet = result_mat[-2, 0, i]
+            print(f'PDE core inlet: {PDE_val_core_inlet}')
+            ODE_val = ode_result_mat[-2, 0, i]
+            print(f'ODE {ODE_val}')
+            pcnt_diff = (PDE_val_core_inlet - ODE_val) / (PDE_val_core_inlet) * 100
+            print(f'{iso} PDE/ODE diff: {round(pcnt_diff, 3)}%')
 
     # Gif
     if gif:

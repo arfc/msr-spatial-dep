@@ -255,15 +255,18 @@ class DiffEqComp(FormatAssist):
 if __name__ == '__main__':
     no_space_ODE = True
     spatial_source_variation = False
-    gif = True
+    gif = False
+    scaled_flux = True
     tf = 100  # 324_000
-    nodes = 20
+    nodes = 40
 
     # MSRE https://www.tandfonline.com/doi/epdf/10.1080/00295450.2021.1943122?needAccess=true [1]
     # https://github.com/openmsr/msre/blob/master/core/docs/msrecore.pdf [2]
     # https://link.springer.com/article/10.1007/s10967-022-08535-3 [3]
+    incore_frac = 0.33
+    excore_frac = 0.67
     z1 = 200.66  # [2] #272 #[1]
-    z2 = (z1 / 0.33) * 0.67
+    z2 = (z1 / incore_frac) * excore_frac
 
     # 25,233 cm3/s # [1]
     # 75,708 cm3/s # [2]
@@ -297,6 +300,11 @@ if __name__ == '__main__':
         _, _, concs_vary = Comp.fd_PDE(True)
 
     if no_space_ODE:
+        if scaled_flux:
+            mu = {'test': [2.1065742176025568e-05 + loss_core * incore_frac, 2.1065742176025568e-05]}
+            S = {'test': [24568909090.909092 * incore_frac, 0]}
+            Comp = DiffEqComp(mu, S, isotope, nu1, nu2, z1, z2,
+                            nodes, tf, dt, initial_guess, lmbda)
         conc_no_space = Comp.ODE()
     end = time()
     print(f'Time taken: {round(end-start)} s')
