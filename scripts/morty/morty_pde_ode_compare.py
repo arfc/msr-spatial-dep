@@ -5,7 +5,7 @@ import os
 
 
 class FormatAssist:
-    """ 
+    """
     Mixin class
 
     """
@@ -13,7 +13,7 @@ class FormatAssist:
     def _format_spatial(self, term1, term2, vector_form=False):
         """
         Distribute term 1 in < z1, and term 2 in > z1.
-        Returns a list of terms corresponding to each z. 
+        Returns a list of terms corresponding to each z.
         If term1 and term2 are vectors, use `vector_form=True`
 
         Parameters
@@ -90,7 +90,7 @@ class DiffEqComp(FormatAssist):
         initial_guess : List of floats
             Initial concentration in-core and ex-core
         lmbda : float
-            Numerical stability value (must be <1); 
+            Numerical stability value (must be <1);
             Time step times flow rate divided by spatial step
 
         """
@@ -111,7 +111,7 @@ class DiffEqComp(FormatAssist):
     def _format_spatial(self, term1, term2, vector_form=False):
         """
         Distribute term 1 in < z1, and term 2 in > z1.
-        Returns a list of terms corresponding to each z. 
+        Returns a list of terms corresponding to each z.
         If term1 and term2 are vectors, use `vector_form=True`
 
         Parameters
@@ -193,8 +193,7 @@ class DiffEqComp(FormatAssist):
 
     def fd_PDE(self, spatial_vary):
         """
-
-        Solves the PDE using finite difference explicit in time and 
+        Solves the PDE using finite difference explicit in time and
         upwind (backwards) in space.
 
         Parameters
@@ -235,8 +234,7 @@ class DiffEqComp(FormatAssist):
 
     def ODE(self):
         """
-
-        Solves the ODE form of depletion (no neutronic updates)        
+        Solves the ODE form of depletion (no neutronic updates)
 
         Returns
         -------
@@ -260,7 +258,8 @@ if __name__ == '__main__':
     tf = 100  # 324_000
     nodes = 40
 
-    # MSRE https://www.tandfonline.com/doi/epdf/10.1080/00295450.2021.1943122?needAccess=true [1]
+    # MSRE data
+    # https://www.tandfonline.com/doi/epdf/10.1080/00295450.2021.1943122 [1]
     # https://github.com/openmsr/msre/blob/master/core/docs/msrecore.pdf [2]
     # https://link.springer.com/article/10.1007/s10967-022-08535-3 [3]
     incore_frac = 0.33
@@ -301,10 +300,11 @@ if __name__ == '__main__':
 
     if no_space_ODE:
         if scaled_flux:
-            mu = {'test': [2.1065742176025568e-05 + loss_core * incore_frac, 2.1065742176025568e-05]}
+            mu = {'test': [2.1065742176025568e-05 + loss_core * incore_frac,
+                           2.1065742176025568e-05]}
             S = {'test': [24568909090.909092 * incore_frac, 0]}
             Comp = DiffEqComp(mu, S, isotope, nu1, nu2, z1, z2,
-                            nodes, tf, dt, initial_guess, lmbda)
+                              nodes, tf, dt, initial_guess, lmbda)
         conc_no_space = Comp.ODE()
     end = time()
     print(f'Time taken: {round(end-start)} s')

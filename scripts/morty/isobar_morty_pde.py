@@ -9,7 +9,7 @@ class IsobarSolve(FormatAssist):
     def __init__(self, nodes, z1, z2, nu1, nu2, lmbda, tf, lams,
                  FYs, br_c_d, br_dm1_d, vol1, vol2, losses):
         """
-        This class allows for the solve of a system of PDEs by 
+        This class allows for the solve of a system of PDEs by
         solving each individually in a Jacobi-like manner.
         This approach will provide a more accurate result,
         as contributions from other nuclides in the isobar
@@ -132,8 +132,8 @@ class IsobarSolve(FormatAssist):
         """
         Set up the 3D result matrix with the form
             time, space, nuclide
-            with 5 nucldies in the isobar available 
-        
+            with 5 nucldies in the isobar available
+
         Parameters
         ----------
         PDE : bool
@@ -246,7 +246,7 @@ class IsobarSolve(FormatAssist):
             result_mat = self._update_result_mat(result_mat, ti)
 
         return result_mat
-    
+
     def _external_ODE_no_step(self, conc, isotope, t):
         """
         This function applies a single time step iteration of the ODE
@@ -264,17 +264,16 @@ class IsobarSolve(FormatAssist):
             Concentration at current time
         """
 
-        conc = (conc * np.exp(-self.mu[isotope][0] * t) + 
-                self.S[isotope][0] / self.mu[isotope][0] * 
+        conc = (conc * np.exp(-self.mu[isotope][0] * t) +
+                self.S[isotope][0] / self.mu[isotope][0] *
                 (1 - np.exp(-self.mu[isotope][0] * t)))
 
         return conc
 
-    
     def ode_solve(self):
         """
         Solve the time dependent ODE
-        
+
         """
         ODE_result_mat = self._initialize_result_mat(False)
         conc0_a = self.conc_a
@@ -359,10 +358,6 @@ if __name__ == '__main__':
     nu1 = nu
     nu2 = nu
     loss_core = 6e12 * 2666886.8E-24
-    # isotope = 'test'
-    # mu = {'test': [2.1065742176025568e-05 + loss_core, 2.1065742176025568e-05]}
-    # S = {'test': [24568909090.909092, 0]}
-    # initial_guess = [0, 0]
     dz = np.diff(np.linspace(0, z1+z2, spacenodes))[0]
     lmbda = 0.9
     dt = lmbda * dz / nu1
@@ -434,8 +429,8 @@ if __name__ == '__main__':
             losses['1d'] = phi_th * ng_Xe135
             losses['1d_m1'] = phi_th * ng_Xe135_m1
             solver = IsobarSolve(spacenodes, z1, z2, nu1, nu2, lmbda, tf,
-                                lams, FYs, br_c_d, br_dm1_d, vol1,
-                                vol2, losses)
+                                 lams, FYs, br_c_d, br_dm1_d, vol1,
+                                 vol2, losses)
 
         ode_result_mat = solver.ode_solve()
     end = time()
@@ -460,10 +455,13 @@ if __name__ == '__main__':
         units = 's'
     labels = [isotopea, isotopeb, isotopec, isotoped_m1, isotoped]
     for i, iso in enumerate(labels):
-        plt.plot(ts[:-2], result_mat[0:-2, core_outlet_node, i], label=f'{iso} Exiting Core')
-        plt.plot(ts[:-2], result_mat[0:-2, -1, i], label=f'{iso} Entering Core')
+        plt.plot(ts[:-2], result_mat[0:-2, core_outlet_node, i],
+                 label=f'{iso} Exiting Core')
+        plt.plot(ts[:-2], result_mat[0:-2, -1, i],
+                 label=f'{iso} Entering Core')
         if ode:
-            plt.plot(ts[:-2], ode_result_mat[0:-2, 0, i], label=f'{iso} ODE', linestyle = '--')
+            plt.plot(ts[:-2], ode_result_mat[0:-2, 0, i],
+                     label=f'{iso} ODE', linestyle='--')
 
         plt.xlabel(f'Time [{units}]')
         plt.ylabel('Concentration [at/cc]')
@@ -480,7 +478,8 @@ if __name__ == '__main__':
             print(f'PDE core inlet: {PDE_val_core_inlet}')
             ODE_val = ode_result_mat[-2, 0, i]
             print(f'ODE {ODE_val}')
-            pcnt_diff = (PDE_val_core_inlet - ODE_val) / (PDE_val_core_inlet) * 100
+            pcnt_diff = ((PDE_val_core_inlet - ODE_val)
+                          / (PDE_val_core_inlet) * 100)
             print(f'{iso} PDE/ODE diff: {round(pcnt_diff, 3)}%')
 
     # Gif
