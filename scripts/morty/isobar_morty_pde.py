@@ -471,7 +471,7 @@ if __name__ == '__main__':
             print(f'PDE core inlet: {PDE_val_core_inlet}')
             ODE_val = ode_result_mat[-2, 0, i]
             print(f'ODE {ODE_val}')
-            pcnt_diff = ((PDE_val_core_inlet - ODE_val) / 
+            pcnt_diff = ((PDE_val_core_inlet - ODE_val) /
                          (PDE_val_core_inlet) * 100)
             print(f'{iso} PDE/ODE diff: {round(pcnt_diff, 3)}%')
 
